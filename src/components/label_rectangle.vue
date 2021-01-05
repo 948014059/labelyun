@@ -73,7 +73,7 @@
 
 <!--          底部下载-->
           <span class="tips" >*当前标注数量 ({{bz_length}}/{{wbz_length}})</span>
-          <div class="download">
+          <div class="download" @click="download()">
             <a href="#">
               <span></span>
               <span></span>
@@ -88,7 +88,28 @@
        </div>
 <!--上传图片-->
        <input type="file" name="image" id='file' class="image_file"
-          @change="show_img($event)"  multiple  />
+          @change="show_img($event)"  multiple />
+
+       <transition name="upload">
+       <div class="uploading" v-show="uploadshow" @click="uploadshow=false">
+          <div class="loading_box">
+            <br>
+            <div class="zipicon">
+              <img src="../assets/zip.png" alt="">
+            </div>
+            <div class="time_to_do">{{upload_flag.pro}}</div>
+            <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated"
+                   id="progress_bar"
+                   role="progressbar"
+                   aria-valuenow="75"
+                   aria-valuemin="0"
+                   aria-valuemax="100" style="width:0%"></div>
+             </div>
+
+          </div>
+       </div>
+       </transition>
 
      </div>
 </template>
@@ -122,6 +143,11 @@
             bz_length:0,
             wbz_length:1,
             img_index:1,
+            upload_flag:{'pro':'上传图片中...0%'},
+            uploadshow:false,
+            down_load_timer:'',
+            down_load_time:10,
+            down_load_url:'',
           }
       },
 
@@ -139,16 +165,21 @@
         //  添加标签
         addlabel(){
 
-          if (this.labelList.length==0){
-            this.labelList.push({'name':this.labelname,'time':0})
+          if (this.labelname.trim()==''){
             this.labelname=''
           }
 
-          else if (!this.find_label(this.labelname)){
-            // console.log(this.find_label(this.labelname))
-            this.labelList.push({'name':this.labelname,'time':0})
+          else if (this.labelList.length==0){
+            this.labelList.push({'name':this.labelname.trim(),'time':0})
             this.labelname=''
           }
+
+          else if (!this.find_label(this.labelname.trim())){
+            // console.log(this.find_label(this.labelname))
+            this.labelList.push({'name':this.labelname.trim(),'time':0})
+            this.labelname=''
+          }
+
           else {
             alert('请勿重复添加标签')
           }
@@ -188,12 +219,6 @@
 
         //修改图片
         changeimg(item){
-          // this.dataList[this.imgUrl]=this.$refs['aiPanel-editor'].getMarker().getData();
-          // this.$refs['aiPanel-editor'].getMarker().clearData();
-          //
-          // this.imgUrl=item
-          // this.$refs['aiPanel-editor'].getMarker().renderData(this.dataList[item])
-
           this.save_and_ref(item)
 
           let item_doc = this.imgList.indexOf(item)
@@ -212,8 +237,11 @@
         let files=document.querySelector('#file').files
 
           for (var i =0 ; i<files.length;i++){
-             this.imgList.push(this.getObjectURL(files[i]))
-             this.find_url[this.getObjectURL(files[i])]=files[i].name
+            var url=this.getObjectURL(files[i])
+             this.imgList.push(url)
+             this.find_url[url]=files[i].name
+              // this.$set(this.find_url,this.getObjectURL(files[i]),files[i].name)
+
              this.image_len+=100
           }
       },
@@ -287,6 +315,7 @@
 
         },
 
+        //删除标签
         dellabel(item){
           // console.log(item)
           if (item.time>0){
@@ -295,6 +324,58 @@
           else {
             this.labelList.splice(this.labelList.indexOf(item),1)
           }
+
+        },
+
+        //下载标注后的数据
+        download(){
+          this.uploadshow=true
+          var progress_bar = document.getElementById('progress_bar')
+
+           var data_json = []
+           var hw=''
+           var name=''
+           for (var  key in this.dataList){
+             name=this.find_url[key]
+             hw=this.image_hw[key]
+             var data= this.dataList[key]
+             data_json.push({'name':name,'hw':hw,'data':data})
+
+           }
+        let that = this
+        this.$axios({method:'post',
+            headers:{ "Content-Type": "application/json;charset=utf-8" },
+            url: '/labelyun',
+            data:{'data':data_json,'label':this.labelList},
+            onUploadProgress:function (e) {
+                var complete=(e.loaded/e.total*100|0)+'%'
+                that.$set(that.upload_flag,'pro','上传数据中...'+complete)
+                progress_bar.style.width=complete
+
+                // this.upload_flag='上传图片中...'+complete
+                // console.log('上传图片中...'+complete)
+            },
+            onDownloadProgress:function (e) {
+                var complete = (e.loaded/e.total*100|0)+'%'
+                that.$set(that.upload_flag,'pro','正在获取压缩包...'+complete)
+                progress_bar.style.width=complete
+            }
+            }).then(res=>{
+              console.log(res)
+              if (res.data.flag=='success'){
+                that.$set(that.upload_flag,'pro','点击zip图标即可下载，（'+that.down_load_time+'S 后自动跳转下载）')
+                that.down_load_url='http://192.168.3.7:6001/api/download_zip?name='+res.data.zip_name
+
+                that.down_load_timer=setInterval(()=>{
+                    that.down_load_time-=1
+                },1000)
+
+              }
+              else {
+                alert('您还没开始标注呢')
+                this.uploadshow=false
+              }
+            })
 
         }
       },
@@ -317,14 +398,22 @@
               if (this.dataList[key].length!=0){
                 count++
               }
-
             }
-
             this.bz_length=count
           },
 
           imgUrl(val){
             this.img_index=this.imgList.indexOf(val)+1
+          },
+
+          down_load_time(val){
+            this.$set(this.upload_flag,'pro','点击zip图标即可下载，（'+this.down_load_time+'S 后自动跳转下载）')
+            if (val==0){
+              this.down_load_time=10
+              clearInterval(this.down_load_timer)
+              window.open(this.down_load_url)
+              this.uploadshow=false
+            }
           }
 
 
@@ -657,14 +746,60 @@
     margin-left:5px ;
   }
 
-  /*.v-enter,.v-leave-to{*/
-  /*  opacity: 0;*/
-  /*  transform: translateY(-500px);*/
-  /*}*/
+  .uploading{
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 999;
+    background: rgba(0,0,0,0.3);
+    /*background: red;*/
+    position: absolute;
+  }
+  .loading_box{
+    width: 400px;
+    height: 200px;
+    background: #f4f4f4;
+    margin: 0 auto ;
+    position: relative;
+    top: 30%;
+    border-radius: 20px;
+  }
+  .zipicon{
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    /*margin-top: 10px;*/
+  }
+  .zipicon img{
+    width: 90%;
+    height: 90%;
+    margin: 5%;
 
-  /*.v-enter-active,.v-leave-active{*/
-  /*  transition:  all .8s ease;*/
-  /*}*/
+  }
+
+
+  .time_to_do{
+    width: 100%;
+    height: 20px;
+    margin-top: 10px;
+  }
+  .progress{
+
+    margin: 15px;
+    /*background: red;*/
+  }
+
+  .upload-enter,.upload-leave-to{
+    opacity: 0;
+    transform: translateY(-500px);
+  }
+
+  .upload-enter-active,.upload-leave-active{
+    transition:  all 1s ease;
+  }
+
     .v-enter, .v-leave-to {
     opacity : 0 ;
       transform: translateZ(20px);
