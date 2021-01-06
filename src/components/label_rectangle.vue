@@ -91,7 +91,7 @@
           @change="show_img($event)"  multiple />
 
        <transition name="upload">
-       <div class="uploading" v-show="uploadshow" @click="uploadshow=false">
+       <div class="uploading" v-show="uploadshow">
           <div class="loading_box">
             <br>
             <div class="zipicon">
@@ -285,6 +285,7 @@
 
         //下一张图片
         next(){
+
             var image_list=document.getElementsByClassName('image_lists')[0]
           // console.log(image_list.offsetWidth-400)
             let letfpx= image_list.style.left
@@ -362,8 +363,8 @@
             }).then(res=>{
               console.log(res)
               if (res.data.flag=='success'){
-                that.$set(that.upload_flag,'pro','点击zip图标即可下载，（'+that.down_load_time+'S 后自动跳转下载）')
-                that.down_load_url='http://192.168.3.7:6001/api/download_zip?name='+res.data.zip_name
+                that.$set(that.upload_flag,'pro','（'+that.down_load_time+'S 后自动跳转下载）')
+                that.down_load_url='http://test.smartyg.com:6001/api/download_zip?name='+res.data.zip_name
 
                 that.down_load_timer=setInterval(()=>{
                     that.down_load_time-=1
@@ -406,7 +407,7 @@
           },
 
           down_load_time(val){
-            this.$set(this.upload_flag,'pro','点击zip图标即可下载，（'+this.down_load_time+'S 后自动跳转下载）')
+            this.$set(this.upload_flag,'pro','（'+this.down_load_time+'S 后自动跳转下载）')
             if (val==0){
               this.down_load_time=10
               clearInterval(this.down_load_timer)
@@ -429,9 +430,9 @@
 
   .label_box{
     position: fixed;
-    top:0px;
+    /*top:55px;*/
     width: 100%;
-    height: 1000px;
+    height: 100%;
     background: #f4f4f4;
   }
 
