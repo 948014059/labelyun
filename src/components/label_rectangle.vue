@@ -196,6 +196,7 @@
           let item_index = this.labelList.indexOf(item)
           // console.log(this.labelList[item_index])
           this.labelList[item_index].time+=1
+          this.$set(this.dataList,this.imgUrl,this.$refs['aiPanel-editor'].getMarker().getData())
 
       },
         //图片加载完成
@@ -208,9 +209,7 @@
         // 保存和刷新
         save_and_ref(item){
           // this.dataList[this.imgUrl]=this.$refs['aiPanel-editor'].getMarker().getData();
-          this.$set(this.dataList,this.imgUrl,this.$refs['aiPanel-editor'].getMarker().getData())
-
-
+          // this.$set(this.dataList,this.imgUrl,this.$refs['aiPanel-editor'].getMarker().getData())
           this.$refs['aiPanel-editor'].getMarker().clearData();
 
           this.imgUrl=item
