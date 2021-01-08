@@ -364,8 +364,7 @@
               console.log(res)
               if (res.data.flag=='success'){
                 that.$set(that.upload_flag,'pro','（'+that.down_load_time+'S 后自动跳转下载）')
-                that.down_load_url='http://test.smartyg.com:6001/api/download_zip?name='+res.data.zip_name
-
+                that.down_load_url='https://test.smartyg.com/api/download_zip?name='+res.data.zip_name
                 that.down_load_timer=setInterval(()=>{
                     that.down_load_time-=1
                 },1000)
